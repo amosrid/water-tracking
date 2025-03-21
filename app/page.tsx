@@ -20,6 +20,15 @@ import {
 } from "@/components/ui/dialog"
 import { format } from "date-fns"
 
+// First, let's add a new import for the confetti effect and toast notifications
+import { useToast } from "@/components/ui/use-toast"
+import { ToastAction } from "@/components/ui/toast"
+import { Toaster } from "@/components/ui/toaster"
+import confetti from "canvas-confetti"
+
+// Import the GoalCelebration component
+import { GoalCelebration } from "./goal-celebration"
+
 // Types
 type WaterEntry = {
   id: string
@@ -58,6 +67,11 @@ export default function WaterTracker() {
   const [todayTotal, setTodayTotal] = useState<number>(0)
   const [activeTab, setActiveTab] = useState<string>("tracker")
 
+  // Add the useToast hook in the component
+  // Add this near the other state declarations
+  const { toast } = useToast()
+  const [goalReached, setGoalReached] = useState<boolean>(false)
+
   // Load data from localStorage on component mount
   useEffect(() => {
     const storedTarget = localStorage.getItem("waterTarget")
@@ -87,6 +101,32 @@ export default function WaterTracker() {
     localStorage.setItem("cupSizes", JSON.stringify(cupSizes))
     localStorage.setItem("waterHistory", JSON.stringify(history))
   }, [dailyTarget, cupSizes, history])
+
+  // Add a useEffect to check if the goal is reached and trigger feedback
+  // Add this after the other useEffect hooks
+  useEffect(() => {
+    // Check if goal is newly reached (and wasn't already reached before)
+    if (todayTotal >= dailyTarget && !goalReached) {
+      setGoalReached(true)
+
+      // Trigger confetti effect
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+      })
+
+      // Show toast notification
+      toast({
+        title: "Goal Reached! 🎉",
+        description: `Congratulations! You've reached your daily water intake goal of ${dailyTarget}ml.`,
+        action: <ToastAction altText="Continue">Keep it up!</ToastAction>,
+      })
+    } else if (todayTotal < dailyTarget && goalReached) {
+      // Reset the goal reached state if the target is adjusted or entries are removed
+      setGoalReached(false)
+    }
+  }, [todayTotal, dailyTarget, goalReached, toast])
 
   // Add water entry
   const addWaterEntry = () => {
@@ -119,6 +159,21 @@ export default function WaterTracker() {
         total: amount,
       })
       setTodayTotal(amount)
+    }
+
+    // Modify the addWaterEntry function to add a special message when exactly reaching the goal
+    // Find the addWaterEntry function and add this code before the end of the function
+    const updatedTotal = todayIndex >= 0 ? updatedHistory[todayIndex].total : amount
+
+    // Check if this entry exactly hits the target
+    if (updatedTotal === dailyTarget) {
+      setTimeout(() => {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+        })
+      }, 300)
     }
 
     setHistory(updatedHistory)
@@ -178,7 +233,24 @@ export default function WaterTracker() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Progress value={(todayTotal / dailyTarget) * 100} className="h-4" />
+              <div className="relative h-4 overflow-hidden rounded-full bg-blue-100">
+                <div
+                  className={`absolute inset-0 bg-blue-500 transition-all duration-1000 ease-out ${
+                    goalReached ? "animate-water-fill" : ""
+                  }`}
+                  style={{
+                    width: `${Math.min((todayTotal / dailyTarget) * 100, 100)}%`,
+                    transform: goalReached
+                      ? "translateY(0%)"
+                      : `translateY(${100 - Math.min((todayTotal / dailyTarget) * 100, 100)}%)`,
+                  }}
+                />
+                {goalReached && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold text-white drop-shadow-md">Goal Reached!</span>
+                  </div>
+                )}
+              </div>
 
               <div className="mt-6">
                 <Label htmlFor="cup-size">Select cup size</Label>
@@ -359,6 +431,8 @@ export default function WaterTracker() {
           </Card>
         </TabsContent>
       </Tabs>
+      <GoalCelebration show={goalReached} target={dailyTarget} />
+      <Toaster />
     </div>
   )
 }
