@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { X, Download, Share } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -34,18 +34,35 @@ export default function InstallPrompt({ onDismiss }: InstallPromptProps) {
   }, [])
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return
+    if (deferredPrompt) {
+      // Show the install prompt
+      deferredPrompt.prompt()
 
-    // Show the install prompt
-    deferredPrompt.prompt()
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice
+      console.log(`User response to the install prompt: ${outcome}`)
 
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice
-    console.log(`User response to the install prompt: ${outcome}`)
+      // We've used the prompt, and can't use it again, throw it away
+      setDeferredPrompt(null)
+      onDismiss()
+    } else {
+      // Jika deferredPrompt tidak tersedia, buka instruksi manual
+      alert(
+        "Untuk menginstal aplikasi:\n\n1. Ketuk ikon menu tiga titik (⋮) di pojok kanan atas Chrome\n2. Pilih 'Install app' atau 'Add to Home screen'\n3. Ikuti petunjuk instalasi",
+      )
+    }
+  }
 
-    // We've used the prompt, and can't use it again, throw it away
-    setDeferredPrompt(null)
-    onDismiss()
+  const handleManualInstall = () => {
+    if (isIOS) {
+      alert(
+        "Untuk menginstal di iOS:\n\n1. Ketuk ikon Share (kotak dengan panah ke atas)\n2. Gulir ke bawah dan ketuk 'Add to Home Screen'\n3. Ketuk 'Add' di pojok kanan atas",
+      )
+    } else {
+      alert(
+        "Untuk menginstal di Android:\n\n1. Ketuk ikon menu tiga titik (⋮) di pojok kanan atas Chrome\n2. Pilih 'Install app' atau 'Add to Home screen'\n3. Ikuti petunjuk instalasi",
+      )
+    }
   }
 
   return (
@@ -60,50 +77,22 @@ export default function InstallPrompt({ onDismiss }: InstallPromptProps) {
         </Button>
       </CardHeader>
       <CardContent className="pb-2">
-        {isIOS ? (
-          <p className="text-sm">
-            Tap{" "}
-            <span className="inline-flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="mx-1"
-              >
-                <path d="M7 11v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1z"></path>
-                <path d="M14 11v8a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1z"></path>
-                <path d="M10 2v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1z"></path>
-                <path d="M17 2v16a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1z"></path>
-              </svg>
-            </span>{" "}
-            and then "Add to Home Screen" to install the app.
-          </p>
-        ) : (
-          <p className="text-sm">Install this app on your device for quick and easy access when you're on the go.</p>
-        )}
+        <p className="text-sm">Install this app on your device for quick and easy access when you're on the go.</p>
       </CardContent>
-      <CardFooter>
-        {!isIOS && deferredPrompt && (
-          <Button onClick={handleInstallClick} className="w-full">
-            Install Now
-          </Button>
-        )}
-        {!isIOS && !deferredPrompt && (
-          <Button variant="outline" onClick={onDismiss} className="w-full">
-            Maybe Later
-          </Button>
-        )}
-        {isIOS && (
-          <Button variant="outline" onClick={onDismiss} className="w-full">
-            Got It
-          </Button>
-        )}
+      <CardFooter className="flex flex-col gap-2">
+        <Button onClick={handleInstallClick} className="w-full bg-blue-600 hover:bg-blue-700">
+          <Download className="mr-2 h-4 w-4" />
+          Install Now
+        </Button>
+
+        <Button onClick={handleManualInstall} variant="outline" className="w-full">
+          <Share className="mr-2 h-4 w-4" />
+          Show Manual Install Steps
+        </Button>
+
+        <Button variant="ghost" onClick={onDismiss} className="w-full">
+          Maybe Later
+        </Button>
       </CardFooter>
     </Card>
   )
